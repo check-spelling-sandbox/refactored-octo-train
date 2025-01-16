@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+releases=$(mktemp)
+
+maybe_debug() {
+  if [ -n "$debug" ]; then
+    set -x
+  fi
+}
+
+list_releases() {
+  releases_url="https://api.github.com/repos/$repo/releases"
+  if [ -n "$version" ]; then
+    releases_url="$releases_url/tags/$version"
+  fi
+  curl -H "$AUTHORIZATION_HEADER" -q -s -L "$releases_url" -o "$releases"
+}
+
+find_artifact() {
+  if [ -z "$version" ]; then
+    version_selector='.[0]'
+  fi
+  if [ -z "$os_re" ]; then
+    os=$(echo ${os:-$(uname -s)}|tr A-Z a-z)
+    case $os in
+      darwin)
+        os_re='[Dd]arwin|[Mm][Aa][Cc][Oo][Ss]'
+        ;;
+      linux)
+        os_re='[Ll]inux'
+        ;;
+      windows*|CYGWIN*)
+        os_re='[Ww]in(?:dows|)'
+        ;;
+    esac
+  fi
+  if [ -z "$arch_re" ]; then
+    arch=$(echo ${arch:-$(uname -m)}|tr A-Z a-z)
+    case $arch in
+      arm64|aarch64)
+        arch_re='[Aa]rm64|[Aa]arch64';;
+      amd64|x86_64)
+        arch_re='[Aa]md64|[Xx]86_64';;
+      i686|i386|x86)
+        arch_re='(?:i[3-6]|x)86';;
+    esac
+  fi
+  jq -r '['"$version_selector"'.assets[] | select (.name | test("'"$os_re"'") and test("'"$arch_re"'")) | .browser_download_url // empty] | .[-1]' "$releases"
+}
+
+select_artifact() {
+  artifact=$(find_artifact)
+  if [ -z "$artifact" ]; then
+    echo "$0 could not find asset from '$releases_url' (saved as '$releases') matching OS ('$os_re') and ARCH ('$arch_re')" >&2
+    exit 1
+  fi
+}
+
+set_up_auth() {
+  if [ -n "$GH_TOKEN" ]; then
+    export AUTHORIZATION_HEADER="Authorization: token $GH_TOKEN"
+  else
+    export AUTHORIZATION_HEADER='X-No-Authorization: Sorry About That'
+  fi
+}
+
+download_artifact() {
+  temp_file=$(mktemp)
+  curl -H "$AUTHORIZATION_HEADER" -o "$temp_file" -q -s -L "$artifact"
+  echo "url=$artifact" >> "$GITHUB_OUTPUT"
+}
+
+select_file() {
+  (
+    if [ -n "$file_re" ]; then
+      grep -E "$file_re"
+    else
+      cat -
+    fi
+  ) | tail -1
+}
+
+strip_zip_file_size_date_and_time_from_directory_listing() {
+  perl -pe 's/^\s*\d+\s+\d+-\d+-\d+\s+\d+:\d+\s+//'
+}
+
+get_destination() {
+  destination="${file:-$working_directory}"
+  echo "path=$destination" >> "$GITHUB_OUTPUT"
+}
+
+move_and_cleanup_selected_file() {
+  if [ -n "$selected_file" ] && [ -e "$selected_file" ]; then
+    selected_file="$(pwd)/$selected_file"
+    cd "$working_directory"
+    get_destination
+    mv "$selected_file" "$destination" &&
+    rm "$temp_file"
+  else
+    mv * "$working_directory"
+  fi
+}
+
+maybe_work_in_scratch_area() {
+  if [ -z "$working_directory" ]; then
+    working_directory=$(pwd)
+  fi
+  if [ -n "$selected_file" ]; then
+    cd $(mktemp -d)
+  fi
+}
+
+maybe_extract_artifact() {
+  case "$artifact" in
+  *.tar.gz|*.tgz)
+    selected_file=$(
+      tar tzf "$temp_file" |
+      select_file
+    )
+    maybe_work_in_scratch_area
+    tar zxf "$temp_file" "$selected_file"
+    move_and_cleanup_selected_file
+    ;;
+  *.zip)
+    selected_file=$(
+      unzip -l "$temp_file" |
+      select_file |
+      strip_zip_file_size_date_and_time_from_directory_listing
+    )
+    maybe_work_in_scratch_area
+    unzip "$temp_file" "$selected_file"
+    move_and_cleanup_selected_file
+    ;;
+  *)
+    : binary
+    get_destination
+    mv "$temp_file" "$destination"
+  esac
+  if [ -n "$file" ] && [ -f "$file" ]; then
+    chmod +x "$file"
+  fi
+}
+
+maybe_debug
+set_up_auth
+list_releases
+select_artifact
+download_artifact
+maybe_extract_artifact

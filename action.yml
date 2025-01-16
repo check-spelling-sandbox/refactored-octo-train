@@ -1,0 +1,77 @@
+name: 'Release downloader'
+description: 'Download a release'
+inputs:
+  repository:
+    description: Repository containing release
+    required: false
+    default: ${{ github.repository }}
+  file:
+    description: Destination file
+    required: false
+    default: ''
+  version:
+    description: Version to retrieve (defaults to latest)
+    required: false
+    default: ''
+  os:
+    description: OS to favor (defaults to current)
+    required: false
+    default: ''
+  os-pattern:
+    description: OS pattern to filter (defaults to calculating based on os)
+    required: false
+    default: ''
+  arch:
+    description: Architecture to favor (defaults to current)
+    required: false
+    default: ''
+  arch-pattern:
+    description: Architecture pattern to filter (defaults to calculating based on arch)
+    required: false
+    default: ''
+  file-re:
+    description: File pattern (in case os/arch aren't enough to select)
+    required: false
+    default: ''
+  token:
+    description: GitHub Token
+    required: false
+    default: ${{ github.token }}
+  working-directory:
+    description: Working directory
+    required: false
+    default: ''
+  debug:
+    description: Trace action
+    required: false
+    default: ''
+outputs:
+  url:
+    description: Downloaded artifact URL
+    value: ${{ steps.action.outputs.url }}
+  path:
+    description: Path to file on disk
+    value: ${{ steps.action.outputs.path }}
+runs:
+  using: "composite"
+  steps:
+  - name: Run downloader
+    id: action
+    continue-on-error: false
+    shell: bash
+    run: |
+      : Run downloader
+      $GITHUB_ACTION_PATH/gh-release-downloader
+    working-directory: ${{ inputs.checkout_path }}
+    env:
+      GH_TOKEN: ${{ inputs.token }}
+      repo: ${{ inputs.repository }}
+      file: ${{ inputs.file }}
+      version: ${{ inputs.version }}
+      os: ${{ inputs.os }}
+      os_re: ${{ inputs.os-pattern }}
+      arch: ${{ inputs.arch }}
+      arch_re: ${{ inputs.arch-pattern }}
+      file_re: ${{ inputs.file-re }}
+      working_directory: ${{ inputs.working-directory || github.workspace }}
+      debug: ${{ inputs.debug }}

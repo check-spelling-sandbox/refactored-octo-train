@@ -1,0 +1,80 @@
+name: Test
+on:
+  push:
+
+jobs:
+  test:
+    name: Test
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        path: action
+
+    - name: setup
+      shell: bash
+      run: |
+        : Setup
+        mkdir -p bin/extra
+
+    - uses: ./action
+      id: gh
+      with:
+        repository: cli/cli
+        file: bin/gh
+        file-re: bin/
+        version: v2.64.0
+        os: windows
+        debug: 1
+
+    - uses: ./action
+      id: jd
+      with:
+        repository: josephburnett/jd
+        file: bin/extra/jd
+        file-re: bin/
+        arch: arm64
+        version: v1.9.0
+        debug: 1
+
+    - uses: ./action
+      id: crane
+      with:
+        repository: google/go-containerregistry
+        file: bin/extra/crane
+        file-re: ^crane
+        os: Darwin
+
+    - name: debug
+      shell: bash
+      env:
+        gh_url: ${{ steps.gh.outputs.url }}
+        gh_path: ${{ steps.gh.outputs.path }}
+        jd_url: ${{ steps.jd.outputs.url }}
+        jd_path: ${{ steps.jd.outputs.path }}
+        crane_url: ${{ steps.crane.outputs.url }}
+        crane_path: ${{ steps.crane.outputs.path }}
+      run: |
+        : Review
+        check_item() {
+          echo "$1 url: $2"
+          echo "$1 path: $3"
+          "$3" $4 || file "$3"
+        }
+        check_item gh "$gh_url" "$gh_path" version
+        check_item jd "$jd_url" "$jd_path" --version
+        check_item crane "$crane_url" "$crane_path" version
+        find bin
