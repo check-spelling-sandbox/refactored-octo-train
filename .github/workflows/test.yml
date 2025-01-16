@@ -1,0 +1,102 @@
+name: Test
+on:
+  push:
+
+jobs:
+  test:
+    name: Test
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        path: action
+
+    - name: crane
+      id: crane
+      uses: ./action
+      with:
+        repository: google/go-containerregistry
+        destination: bin/extra/crane
+        file-re: ^crane
+        os: Darwin
+
+    - name: gh
+      id: gh
+      uses: ./action
+      with:
+        repository: cli/cli
+        destination: bin/gh
+        file-re: bin/
+        version: v2.64.0
+        os: windows
+        trace: 1
+
+    - name: jd
+      id: jd
+      uses: ./action
+      with:
+        repository: josephburnett/jd
+        destination: bin/extra/jd
+        file-re: bin/
+        arch: arm64
+        version: v1.9.0
+        trace: 1
+
+    - name: jq
+      id: jq
+      uses: ./action
+      with:
+        repository: jqlang/jq
+        destination: bin/extra/jq
+
+    - name: debug
+      shell: bash
+      env:
+        gh_url: ${{ steps.gh.outputs.url }}
+        gh_path: ${{ steps.gh.outputs.path }}
+        jd_url: ${{ steps.jd.outputs.url }}
+        jd_path: ${{ steps.jd.outputs.path }}
+        crane_url: ${{ steps.crane.outputs.url }}
+        crane_path: ${{ steps.crane.outputs.path }}
+        jq_url: ${{ steps.jq.outputs.url }}
+        jq_path: ${{ steps.jq.outputs.path }}
+      run: |
+        : Review
+        check_item() {
+          echo "## $1"
+          echo
+          echo '```yaml'
+          echo "url: $2"
+          echo "path: $3"
+          echo '```'
+          echo
+          echo '### Version'
+          echo '```sh'
+          "$3" $4 2>&1 || file "$3"
+          echo '```'
+          echo
+        }
+        (
+          check_item crane "$crane_url" "$crane_path" version
+          check_item gh "$gh_url" "$gh_path" version
+          check_item jd "$jd_url" "$jd_path" --version
+          check_item jq "$jq_url" "$jq_path" --version
+          echo '## Files'
+          echo '```sh'
+          find bin
+          echo '```'
+          echo
+        ) | tee -a "$GITHUB_STEP_SUMMARY"
