@@ -1,0 +1,31 @@
+name: Check Spelling
+
+on:
+  workflow_call:
+    inputs:
+      event_name:
+        required: true
+        type: string
+      event:
+        required: true
+        type: string
+    secrets:
+      CHECK_SPELLING:
+        required: false
+
+jobs:
+  update:
+    name: Update PR
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: apply spelling updates
+        uses: check-spelling/check-spelling@prerelease
+        with:
+          event_aliases: '{"workflow_call": "${{inputs.event_name}}"}'
+          experimental_apply_changes_via_bot: 1
+          checkout: true
+          ssh_key: "${{ secrets.CHECK_SPELLING }}"
