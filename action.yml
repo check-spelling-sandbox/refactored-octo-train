@@ -5,10 +5,10 @@ inputs:
     description: Repository containing release
     required: false
     default: ${{ github.repository }}
-  file:
-    description: Destination file
+  destination:
+    description: Destination
     required: false
-    default: ''
+    default: ${{ github.workspace }}
   version:
     description: Version to retrieve (defaults to latest)
     required: false
@@ -37,10 +37,6 @@ inputs:
     description: GitHub Token
     required: false
     default: ${{ github.token }}
-  working-directory:
-    description: Working directory
-    required: false
-    default: ''
   debug:
     description: Trace action
     required: false
@@ -66,12 +62,11 @@ runs:
     env:
       GH_TOKEN: ${{ inputs.token }}
       repo: ${{ inputs.repository }}
-      file: ${{ inputs.file }}
+      destination: ${{ inputs.destination }}
       version: ${{ inputs.version }}
       os: ${{ inputs.os }}
       os_re: ${{ inputs.os-pattern }}
       arch: ${{ inputs.arch }}
       arch_re: ${{ inputs.arch-pattern }}
       file_re: ${{ inputs.file-re }}
-      working_directory: ${{ inputs.working-directory || github.workspace }}
       debug: ${{ inputs.debug }}

@@ -84,26 +84,26 @@ strip_zip_file_size_date_and_time_from_directory_listing() {
 }
 
 get_destination() {
-  destination="${file:-$working_directory}"
+  destination="${destination:-$GITHUB_WORKSPACE}"
+  mkdir -p "$(dirname "$destination")"
   echo "path=$destination" >> "$GITHUB_OUTPUT"
 }
 
 move_and_cleanup_selected_file() {
+  get_destination
   if [ -n "$selected_file" ] && [ -e "$selected_file" ]; then
     selected_file="$(pwd)/$selected_file"
-    cd "$working_directory"
-    get_destination
+    cd "$GITHUB_WORKSPACE"
     mv "$selected_file" "$destination" &&
     rm "$temp_file"
   else
-    mv * "$working_directory"
+    mkdir -p "$destination"
+    rsync . "$destination"
+    find . -mindepth 1 -delete
   fi
 }
 
 maybe_work_in_scratch_area() {
-  if [ -z "$working_directory" ]; then
-    working_directory=$(pwd)
-  fi
   if [ -n "$selected_file" ]; then
     cd $(mktemp -d)
   fi
@@ -135,8 +135,8 @@ maybe_extract_artifact() {
     get_destination
     mv "$temp_file" "$destination"
   esac
-  if [ -n "$file" ] && [ -f "$file" ]; then
-    chmod +x "$file"
+  if [ -n "$destination" ] && [ -f "$destination" ]; then
+    chmod +x "$destination"
   fi
 }
 

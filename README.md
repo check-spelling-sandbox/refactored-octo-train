@@ -4,20 +4,49 @@ Action to download and optionally extract binaries from GitHub releases.
 
 ## Usage
 
-```
-uses: ...
-with:
-  repository: (defaults to current repository)
-  file: (path to place file, defaults to working-directory)
-  file-re: (pattern to select file from within the archive)
-  version: (specify a specific release, defaults to latest)
-  os: (OS for which to filter artifacts, defaults to current OS)
-  os-pattern: (pattern to filter artifacts, defaults to patterns based on OS)
-  arch: (Arch for which to filter artifacts, defaults to current Arch)
-  arch-pattern: (pattern to filter artifacts, defaults to patterns based on Arch)
-  token: (GitHub token to use to retrieve private artifacts, defaults to GitHub token)
-  working-directory: (place to leave files if file isn't set, defaults to github workspace)
-  debug: (set to a value to trace action, defaults to off)
+```yaml
+- uses: ...
+  with:
+    # Repository name. For example cli/cli
+    # Default: ${{ github.repository }}
+    repository: ''
+
+    # Path to place file(s)
+    # Default: ${{ github.workspace }}
+    destination: ''
+
+    # Pattern to select file from within the archive
+    # If omitted, the entire archive is extracted
+    # Default: none
+    file-re: ''
+
+    # Release version
+    # Default: latest
+    version: ''
+
+    # OS to use to filter artifacts
+    # Default: current OS
+    os: ''
+
+    # OS pattern to filter artifacts
+    # Default: pattern based on ${{ inputs.os }}
+    os-pattern: ''
+
+    # Architecture to use to filter artifacts
+    # Default: current Architecture
+    arch: ''
+
+    # Architecture pattern to filter artifacts
+    # Default: pattern based on ${{ inputs.arch }}
+    arch-pattern: ''
+
+    # Personal access token (PAT) used to fetch the repository.
+    # Default: ${{ github.token }}
+    token: ''
+
+    # Debug action. Set to a value to trace action
+    # Default: ''
+    debug:
 ```
 
 ## Outputs
@@ -29,3 +58,22 @@ The location of the extracted item(s).
 ### url
 
 The url of the downloaded artifact.
+
+## Recommended permissions
+
+This action doesn't need access to your repository to perform its action, so if
+your workflow is self contained and itself doesn't need anything from the repository,
+you could probably use:
+
+```yaml
+permisions: {}
+```
+
+If you're retrieving an artifact from your repository and the repository itself is not public and you aren't providing a `token`, you'd need:
+
+```yaml
+permissions:
+  contents: read
+```
+
+Obviously, if your workflow is nontrivial, you may need more permissions for other steps.
