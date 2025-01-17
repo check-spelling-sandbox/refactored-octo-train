@@ -2,6 +2,8 @@
 
 Action to download and optionally extract binaries from GitHub releases.
 
+asdajhkjk
+
 ## Usage
 
 ```
