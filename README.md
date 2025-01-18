@@ -70,7 +70,7 @@ your workflow is self contained and itself doesn't need anything from the reposi
 you could probably use:
 
 ```yaml
-permisions: {}
+permissions: {}
 ```
 
 #### Accessing a release from a different repository that isn't public
