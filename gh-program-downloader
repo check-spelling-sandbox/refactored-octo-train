@@ -50,7 +50,22 @@ find_artifact() {
 select_artifact() {
   artifact=$(find_artifact)
   if [ -z "$artifact" ]; then
-    echo "$0 could not find asset from '$releases_url' (saved as '$releases') matching OS ('$os_re') and ARCH ('$arch_re')" >&2
+    if [ -n "$os_re" ]; then
+      os_message="OS ('$os_re')"
+      maybe_and=1
+      matching=1
+    fi
+    if [ -n "$arch_re" ]; then
+      arch_message="ARCH ('$arch_re')"
+      if [ -n "$maybe_and" ]; then
+        and=' and '
+      fi
+      matching=1
+    fi
+    if [ -n "$matching" ]; then
+      matching='matching '
+    fi
+    echo "$0 could not find asset from '$releases_url' (saved as '$releases') ${matching}${os_message}${and}${arch_message}" >&2
     exit 1
   fi
 }
