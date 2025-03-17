@@ -9,6 +9,10 @@ inputs:
     description: Destination
     required: false
     default: ${{ github.workspace }}
+  add-to-path:
+    description: Add to path
+    required: false
+    default: ''
   version:
     description: Version to retrieve (defaults to latest)
     required: false
@@ -62,6 +66,7 @@ runs:
       GH_TOKEN: ${{ inputs.token }}
       repo: ${{ inputs.repository }}
       destination: ${{ inputs.destination }}
+      add_to_path: ${{ inputs.add-to-path }}
       version: ${{ inputs.version }}
       os: ${{ inputs.os }}
       os_re: ${{ inputs.os-pattern }}
