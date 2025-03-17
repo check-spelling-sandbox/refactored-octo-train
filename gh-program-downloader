@@ -44,7 +44,8 @@ find_artifact() {
         arch_re='(?:i[3-6]|x)86';;
     esac
   fi
-  jq -r '['"$version_selector"'.assets[] | select (.name | test("'"$os_re"'") and test("'"$arch_re"'")) | .browser_download_url // empty] | .[-1]' "$releases"
+  os_re="$os_re" arch_re="$arch_re" version_selector="$version_selector" \
+  "$GITHUB_ACTION_PATH/program-filter" "$releases"
 }
 
 select_artifact() {

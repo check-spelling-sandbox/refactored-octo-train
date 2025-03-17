@@ -1,0 +1,32 @@
+#!/usr/bin/env perl
+use JSON::PP;
+my $content;
+{
+  local $/=undef;
+  $content=<>;
+}
+
+$releases_or_release=decode_json($content);
+
+if ($ENV{version_selector}) {
+  $release=$releases_or_release->[0];
+} else {
+  $release=$releases_or_release;
+}
+
+$os_re=$ENV{os_re} || ".";
+$arch_re=$ENV{arch_re} || ".";
+
+$assets=$release->{assets};
+
+my $result;
+for $asset (@{$assets}) {
+  my $browser_download_url = $asset->{browser_download_url};
+  next unless $browser_download_url;
+  my $name = $asset->{name};
+  next unless $name =~ /$os_re/;
+  next unless $name =~ /$arch_re/;
+  $result = $browser_download_url;
+}
+
+print $result;
