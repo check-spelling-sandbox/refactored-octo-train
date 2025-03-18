@@ -61,6 +61,27 @@ jobs:
       with:
         repository: jqlang/jq
         destination: bin/extra/jq
+        add-to-path: 1
+
+    - name: check add to path
+      shell: bash
+      run: |
+        : Check add-to-path
+        jq_in_path=$(command -v jq)
+        expected_jq=$(realpath bin/extra/jq)
+        (
+          echo "## jq"
+          echo '```sh'
+          echo "jq in path: $jq_in_path"
+          echo "expected jq: $expected_jq"
+          echo '```'
+          echo
+        ) >> "$GITHUB_STEP_SUMMARY"
+
+        if [ "$jq_in_path" != "$expected_jq" ]; then
+          echo "::error ::'$jq_in_path' != '$expected_jq'"
+          exit 1
+        fi
 
     - name: debug
       shell: bash
