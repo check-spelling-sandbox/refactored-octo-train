@@ -117,8 +117,8 @@ move_and_cleanup_selected_file() {
     rm "$temp_file"
   else
     mkdir -p "$destination"
-    rsync . "$destination"
-    find . -mindepth 1 -delete
+    find . -mindepth 1 -maxdepth 1 -print0 |
+      xargs -0 mv -t "$destination"
   fi
 }
 
