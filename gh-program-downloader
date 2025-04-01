@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 releases=$(mktemp)
 
 maybe_trace() {
