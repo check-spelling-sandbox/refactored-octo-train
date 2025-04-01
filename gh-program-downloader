@@ -157,7 +157,7 @@ maybe_extract_artifact() {
   if [ -n "$destination" ] && [ -f "$destination" ]; then
     chmod +x "$destination"
     if [ -n "$add_to_path" ]; then
-      dirname "$destination" >> "$GITHUB_PATH"
+      realpath $(dirname "$destination") >> "$GITHUB_PATH"
     fi
   fi
 }
