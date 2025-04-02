@@ -134,13 +134,27 @@ download_artifact() {
 }
 
 select_file() {
-  (
-    if [ -n "$file_re" ]; then
-      grep -E "$file_re"
+  list=$(mktemp)
+  cat - > "$list"
+  if [ ! -s "$list" ]; then
+    echo "No files in archive" >&2
+    false
+  fi
+  if [ -n "$file_re" ]; then
+    result=$(
+      grep -E "$file_re" "$list" | tail -1
+    )
+    rm -f "$list"
+    if [ -n "$result" ]; then
+      echo "$result"
     else
-      cat -
+      echo "file_re ($file_re) did not match any files in archive" >&2
+      false
     fi
-  ) | tail -1
+  else
+    tail -1 "$list"
+    rm -f "$list"
+  fi
 }
 
 strip_zip_file_size_date_and_time_from_directory_listing() {
