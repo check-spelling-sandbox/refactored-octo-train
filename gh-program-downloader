@@ -80,9 +80,42 @@ set_up_auth() {
   fi
 }
 
+get_content_length() {
+  perl -e '
+    my $headers_file=shift;
+    my $length;
+    {
+      open(my $headers, q(<), $headers_file);
+      local $/="\r\n";
+      while (<$headers>) {
+        chomp;
+        next unless m/^content-length:\s+(\d+)$/i;
+        $length=$1;
+      }
+      close $headers;
+    }
+    print $length;
+  ' "$1"
+}
+
+validate_file_length() {
+  perl -e '
+    my $artifact=$ENV{artifact};
+    my $temp_file="$ENV{temp_file}";
+    my $length=$ENV{content_length};
+    my $size=-s $temp_file;
+    die "downloaded artifact ($artifact) length ($size) is not expected length ($length)" unless ($size) == $length;
+    print "\n";
+  '
+}
+
 download_artifact() {
   temp_file=$(mktemp)
-  curl -H "$AUTHORIZATION_HEADER" -o "$temp_file" -q -s -L "$artifact"
+  headers_file=$(mktemp)
+  curl -D "$headers_file" -H "$AUTHORIZATION_HEADER" -o "$temp_file" -q -s -L "$artifact"
+  content_length=$(get_content_length "$headers_file")
+  content_length="$content_length" artifact="$artifact" temp_file="$temp_file" validate_file_length
+
   echo "url=$artifact" >> "$GITHUB_OUTPUT"
 }
 
