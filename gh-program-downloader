@@ -109,11 +109,25 @@ validate_file_length() {
   '
 }
 
+shasum() {
+  perl -e '
+  use Digest::SHA qw($errmsg);
+  my $mode = "b";
+  my $alg = 256;
+  my $file = shift;
+  my $digest = eval { Digest::SHA->new($alg)->addfile($file, $mode) };
+  if ($@) { warn "shasum: $file: $errmsg\n"; exit; }
+  print $digest->hexdigest;
+  ' "$1"
+}
+
 download_artifact() {
   temp_file=$(mktemp)
   headers_file=$(mktemp)
   curl -D "$headers_file" -H "$AUTHORIZATION_HEADER" -o "$temp_file" -q -s -L "$artifact"
   content_length=$(get_content_length "$headers_file")
+  request_id=$(grep -i ^x-github-request-id: "$headers_file" | tail -1)
+  echo "Downloaded $artifact - content-length: $content_length; shasum256: $(shasum "$temp_file"); $request_id"
   content_length="$content_length" artifact="$artifact" temp_file="$temp_file" validate_file_length
 
   echo "url=$artifact" >> "$GITHUB_OUTPUT"
