@@ -2,18 +2,46 @@
 set -e
 releases=$(mktemp)
 
-maybe_trace() {
+setup() {
   if [ -n "$trace" ]; then
     set -x
   fi
+  b='`'
+  headers_file=$(mktemp)
 }
 
 list_releases() {
-  releases_url="https://api.github.com/repos/$repo/releases"
+  releases_url_base="https://api.github.com/repos/$repo/releases"
   if [ -n "$version" ]; then
-    releases_url="$releases_url/tags/$version"
+    releases_url="$releases_url_base/tags/$version"
+  else
+    releases_url="$releases_url_base"
   fi
-  curl -H "$AUTHORIZATION_HEADER" -q -s -L "$releases_url" -o "$releases"
+  curl -D "$headers_file" -H "$AUTHORIZATION_HEADER" -q -s -L "$releases_url" -o "$releases"
+  response_code=$(get_response_code)
+  type=$(get_content_type "$headers_file")
+  if [ $response_code -eq 404 ]; then
+    if [ -n "$version" ]; then
+      curl -D "$headers_file" -H "$AUTHORIZATION_HEADER" -q -s -L "$releases_url_base" -o "/dev/null"
+      releases_response_code=$(get_response_code)
+      if [ $releases_response_code -eq 404 ]; then
+        releases_is_404=1
+      fi
+    else
+      releases_is_404=1
+    fi
+    if [ -n "$releases_is_404" ]; then
+      if [ -n "$token_is_not_gh_token" ]; then
+        hint="If the repository $b $repo $b is private, then the provided $b token $b does not have access to the repository"
+      else
+        hint="If the repository $b $repo $b is private, then provide a $b token $b"
+      fi
+      hint="$hint. Otherwise, the repository either does not exist or has been deleted. Check with the repository owner for more information."
+    else
+      hint="The specified version $b $version $b of $b $repo $b is missing; either it never existed or it was deleted. Check the version and the releases page."
+    fi
+  fi
+  validate_response_code "$response_code" "$releases" "$releases_url"
 }
 
 find_artifact() {
@@ -80,22 +108,71 @@ set_up_auth() {
   fi
 }
 
-get_content_length() {
+get_header_value() {
   perl -e '
     my $headers_file=shift;
-    my $length;
+    my $value;
     {
       open(my $headers, q(<), $headers_file);
       local $/="\r\n";
       while (<$headers>) {
         chomp;
-        next unless m/^content-length:\s+(\d+)$/i;
-        $length=$1;
+        next unless m/^$ENV{header}:\s+(.*)$/i;
+        $value=$1;
       }
       close $headers;
     }
-    print $length;
+    print $value;
   ' "$1"
+}
+
+get_content_length() {
+  header='content-length' get_header_value "$1"
+}
+
+get_content_type() {
+  header='content-type' get_header_value "$1"
+}
+
+validate_response_code() {
+  case "$1" in
+    2*)
+    return
+  ;;
+    401)
+      title='Bad credentials'
+      if [ -z "$hint" ]; then
+        hint="Either the provided $b token $b was never valid for repository $b $repo $b, it was revoked/deleted, or it expired. Try replacing it."
+      fi
+      ;;
+    404)
+      title='Server reported resource not found'
+      ;;
+    *)
+      title=Unexpected http response code
+      ;;
+  esac
+  (
+    echo "## $title ($b $1 $b)"
+    if [ -n "$hint" ]; then
+      echo "$hint"
+    fi
+    echo
+    echo "$b $3 $b:"
+    echo
+    case "$type" in
+      *json*)
+        type=json;;
+      *html*)
+        type=html;;
+      *)
+        type=''
+    esac
+    echo '```'"$type"
+    head -c 10240 "$2"
+    echo '```'
+  ) | tee -a "$GITHUB_STEP_SUMMARY" >&2
+  exit 1
 }
 
 validate_file_length() {
@@ -121,13 +198,18 @@ shasum() {
   ' "$1"
 }
 
+get_response_code() {
+  perl -e '$/="\r\n\r\n"; my $code = -1; while (<>) { $_ =~ s/\n.*/\n/s; next unless m!HTTP/\S+\s+(\d+)!; $code=$1;} print $code;' "$headers_file"
+}
+
 download_artifact() {
   temp_file=$(mktemp)
-  headers_file=$(mktemp)
   curl -D "$headers_file" -H "$AUTHORIZATION_HEADER" -o "$temp_file" -q -s -L "$artifact"
+  response_code=$(get_response_code)
   content_length=$(get_content_length "$headers_file")
   request_id=$(grep -i ^x-github-request-id: "$headers_file" | tail -1)
-  echo "Downloaded $artifact - content-length: $content_length; shasum256: $(shasum "$temp_file"); $request_id"
+  echo "Downloaded $artifact - status: $response_code; content-length: $content_length; shasum256: $(shasum "$temp_file"); $request_id"
+  validate_response_code "$response_code" "$temp_file" "$artifact"
   content_length="$content_length" artifact="$artifact" temp_file="$temp_file" validate_file_length
 
   echo "url=$artifact" >> "$GITHUB_OUTPUT"
@@ -224,7 +306,7 @@ maybe_extract_artifact() {
   fi
 }
 
-maybe_trace
+setup
 set_up_auth
 list_releases
 select_artifact

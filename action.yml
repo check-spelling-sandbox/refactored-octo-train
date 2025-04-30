@@ -64,6 +64,7 @@ runs:
       $GITHUB_ACTION_PATH/gh-program-downloader
     env:
       GH_TOKEN: ${{ inputs.token }}
+      token_is_not_gh_token: ${{ inputs.token != github.token && '1' || '' }}
       repo: ${{ inputs.repository }}
       destination: ${{ inputs.destination }}
       add_to_path: ${{ inputs.add-to-path }}
@@ -73,4 +74,4 @@ runs:
       arch: ${{ inputs.arch }}
       arch_re: ${{ inputs.arch-pattern }}
       file_re: ${{ inputs.file-re }}
-      trace: ${{ inputs.trace }}
+      trace: ${{ inputs.trace || (github.run_attempt > 1 && '1' || '') }}

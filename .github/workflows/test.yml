@@ -24,6 +24,37 @@ jobs:
       with:
         path: action
 
+    - name: bad token
+      id: bad-token
+      uses: ./action
+      continue-on-error: true
+      with:
+        repository: check-spelling/nonexistent-repository
+        token: this is not a valid token
+
+    - name: token does not have access
+      id: token-does-not-have-access
+      uses: ./action
+      continue-on-error: true
+      with:
+        repository: check-spelling/nonexistent-repository
+        token: "${{ github.token }} "
+
+    - name: no such repository
+      id: no-such-repository
+      uses: ./action
+      continue-on-error: true
+      with:
+        repository: check-spelling/nonexistent-repository
+
+    - name: no such release
+      id: no-such-release
+      uses: ./action
+      continue-on-error: true
+      with:
+        repository: check-spelling/gh-program-downloader
+        version: no-such-version
+
     - name: crane
       id: crane
       uses: ./action
