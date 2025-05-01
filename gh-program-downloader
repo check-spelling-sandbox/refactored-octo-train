@@ -101,7 +101,7 @@ get_content_length() {
 validate_file_length() {
   perl -e '
     my $artifact=$ENV{artifact};
-    my $temp_file="$ENV{temp_file}";
+    my $temp_file=$ENV{temp_file};
     my $length=$ENV{content_length};
     my $size=-s $temp_file;
     die "downloaded artifact ($artifact) length ($size) is not expected length ($length)" unless ($size) == $length;
