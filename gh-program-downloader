@@ -22,7 +22,7 @@ find_artifact() {
   fi
   if [ -z "$os_re" ]; then
     os=$(echo ${os:-$(uname -s)}|tr A-Z a-z)
-    case $os in
+    case "$os" in
       darwin)
         os_re='[Dd]arwin|[Mm][Aa][Cc][Oo][Ss]'
         ;;
@@ -36,7 +36,7 @@ find_artifact() {
   fi
   if [ -z "$arch_re" ]; then
     arch=$(echo ${arch:-$(uname -m)}|tr A-Z a-z)
-    case $arch in
+    case "$arch" in
       arm64|aarch64)
         arch_re='[Aa]rm64|[Aa]arch64';;
       amd64|x86_64)
@@ -186,7 +186,7 @@ move_and_cleanup_selected_file() {
 
 maybe_work_in_scratch_area() {
   if [ -n "$selected_file" ]; then
-    cd $(mktemp -d)
+    cd "$(mktemp -d)"
   fi
 }
 
@@ -219,7 +219,7 @@ maybe_extract_artifact() {
   if [ -n "$destination" ] && [ -f "$destination" ]; then
     chmod +x "$destination"
     if [ -n "$add_to_path" ]; then
-      realpath $(dirname "$destination") >> "$GITHUB_PATH"
+      realpath "$(dirname "$destination")" >> "$GITHUB_PATH"
     fi
   fi
 }
