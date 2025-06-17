@@ -148,8 +148,11 @@ validate_response_code() {
     404)
       title='Server reported resource not found'
       ;;
+    500)
+      title='Server reported internal error'
+      ;;
     *)
-      title=Unexpected http response code
+      title='Unexpected http response code'
       ;;
   esac
   (
